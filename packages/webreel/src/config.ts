@@ -17,6 +17,7 @@ export type {
   ThemeConfig,
   CursorConfig,
   ElementTarget,
+  RequestHeaders,
 } from "./lib/types.js";
 
 export { VIEWPORT_PRESETS } from "./lib/types.js";
@@ -27,6 +28,7 @@ export interface InputWebreelConfig {
   $schema?: string;
   outDir?: string;
   baseUrl?: string;
+  headers?: import("./lib/types.js").RequestHeaders;
   viewport?: string | { width: number; height: number };
   theme?: import("./lib/types.js").ThemeConfig;
   sfx?: import("./lib/types.js").SfxConfig;
