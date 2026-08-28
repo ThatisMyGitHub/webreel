@@ -1,3 +1,5 @@
+export type CDPHeaderMap = Record<string, string>;
+
 export type CDPClient = {
   close: () => Promise<void>;
   Runtime: {
@@ -18,9 +20,26 @@ export type CDPClient = {
       optimizeForSpeed?: boolean;
     }) => Promise<{ data: string }>;
   };
-  Network: {
-    enable: () => Promise<void>;
-    setExtraHTTPHeaders: (params: { headers: Record<string, string> }) => Promise<void>;
+  Fetch: {
+    enable: (params: {
+      patterns: Array<{
+        urlPattern: string;
+        requestStage: "Request" | "Response";
+      }>;
+    }) => Promise<void>;
+    requestPaused: (
+      listener: (params: {
+        requestId: string;
+        request: {
+          url: string;
+          headers: CDPHeaderMap;
+        };
+      }) => void,
+    ) => void;
+    continueRequest: (params: {
+      requestId: string;
+      headers?: Array<{ name: string; value: string }>;
+    }) => Promise<void>;
   };
   Input: {
     dispatchMouseEvent: (params: {
