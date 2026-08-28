@@ -114,6 +114,19 @@ webreel preview
 webreel preview hero
 ```
 
+### Authenticated targets
+
+Set both `WEBREEL_REQUEST_HEADERS_ORIGIN` and `WEBREEL_REQUEST_HEADERS_JSON` to attach HTTP headers only to requests for one explicit origin during `preview` and `record`.
+
+```bash
+export WEBREEL_REQUEST_HEADERS_ORIGIN='https://protected.example.com'
+export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
+webreel preview protected-demo
+webreel record protected-demo
+```
+
+Both variables are required together. The explicit origin prevents the credentials from being attached to unrelated third-party resources. Keep real authentication values in runtime secret storage and out of versioned config files. Invalid origins, invalid JSON, or non-string header values fail before navigation.
+
 ### `webreel install`
 
 Download Chrome and ffmpeg to `~/.webreel`. Both are also auto-downloaded on first run. Use `--force` to fix corrupted or broken binaries.

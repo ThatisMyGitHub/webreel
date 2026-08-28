@@ -8,6 +8,7 @@
 export const PAGE_TITLES: Record<string, string> = {
   "": "Introduction",
   "quick-start": "Quick Start",
+  "authenticated-targets": "Authenticated Targets",
   commands: "Commands",
   actions: "Actions",
   configuration: "Configuration",

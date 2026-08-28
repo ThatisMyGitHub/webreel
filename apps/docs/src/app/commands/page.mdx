@@ -58,6 +58,8 @@ webreel record --watch
 
 When run without arguments, webreel finds the nearest config file (searching parent directories) and records all videos. Provide video names to record specific videos only.
 
+`record` applies origin-scoped request headers when both `WEBREEL_REQUEST_HEADERS_ORIGIN` and `WEBREEL_REQUEST_HEADERS_JSON` are set. Use this for protected targets that accept machine credentials. Keep real credential values in runtime secret storage. See [Authenticated Targets](/authenticated-targets).
+
 <table>
   <thead>
     <tr>
@@ -104,6 +106,8 @@ webreel preview -c custom.config.json hero
 ```
 
 When run without a video name, the first video in the config is previewed.
+
+`preview` uses the same origin-scoped request-header behavior as `record`, so an authenticated preview exercises the same request interception path that recording will use.
 
 <table>
   <thead>

@@ -16,6 +16,7 @@ export const docsNavigation: NavSection[] = [
       { title: "Introduction", href: "/" },
       { title: "Quick Start", href: "/quick-start" },
       { title: "Configuration", href: "/configuration" },
+      { title: "Authenticated Targets", href: "/authenticated-targets" },
     ],
   },
   {

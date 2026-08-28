@@ -284,6 +284,23 @@ Define several videos in the `videos` map. Shared settings (`viewport`, `theme`,
 
 Config values support `$VAR` and `${VAR}` substitution from the environment.
 
+### Authenticated targets and request headers
+
+For protected targets that use machine-to-machine HTTP authentication, set both `WEBREEL_REQUEST_HEADERS_ORIGIN` and `WEBREEL_REQUEST_HEADERS_JSON` at runtime.
+
+```bash
+export WEBREEL_REQUEST_HEADERS_ORIGIN='https://protected.example.com'
+export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
+webreel preview protected-demo
+webreel record protected-demo
+```
+
+Both variables are required together. The origin must be HTTP or HTTPS and contain no credentials, path, query, or fragment. webreel intercepts only requests for that origin before injecting the configured headers, so credentials are not automatically attached to unrelated third-party subresources.
+
+Do not place real credentials in `webreel.config.json`, scripts, examples, or documentation. Source them from ignored local storage, CI secrets, or another dedicated secret store. Invalid configuration fails before navigation and webreel does not print configured header values.
+
+When helping with an authenticated target, prefer least-privilege machine credentials. Do not automate interactive one-time passwords when the provider supports a dedicated service identity.
+
 ### Output formats
 
 Set the `output` extension to control format: `.mp4` (default), `.gif`, `.webm`.
