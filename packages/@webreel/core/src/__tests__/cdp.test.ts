@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  configureScopedRequestHeaders,
   mergeRequestHeaders,
   parseRequestHeaderConfig,
   parseRequestHeaderOrigin,
@@ -7,6 +8,7 @@ import {
   REQUEST_HEADERS_ENV,
   REQUEST_HEADERS_ORIGIN_ENV,
 } from "../cdp.js";
+import type { CDPClient } from "../types.js";
 
 describe("request headers", () => {
   afterEach(() => {
@@ -99,5 +101,68 @@ describe("request headers", () => {
       { name: "X-Demo-Header", value: "new-value" },
       { name: "Authorization", value: "Bearer token" },
     ]);
+  });
+
+  it("injects headers only for the configured origin", async () => {
+    let paused:
+      | ((params: {
+          requestId: string;
+          request: { url: string; headers: Record<string, string> };
+        }) => void | Promise<void>)
+      | undefined;
+
+    const enable = vi.fn().mockResolvedValue(undefined);
+    const continueRequest = vi.fn().mockResolvedValue(undefined);
+    const client = {
+      Fetch: {
+        enable,
+        requestPaused: vi.fn((listener) => {
+          paused = listener;
+        }),
+        continueRequest,
+      },
+    } as unknown as CDPClient;
+
+    await configureScopedRequestHeaders(client, {
+      origin: "https://protected.example.com",
+      headers: { Authorization: "Bearer secret" },
+    });
+
+    expect(enable).toHaveBeenCalledWith({
+      patterns: [
+        {
+          urlPattern: "https://protected.example.com/*",
+          requestStage: "Request",
+        },
+      ],
+    });
+    expect(paused).toBeTypeOf("function");
+
+    await paused?.({
+      requestId: "same-origin",
+      request: {
+        url: "https://protected.example.com/app.js",
+        headers: { Accept: "*/*" },
+      },
+    });
+    expect(continueRequest).toHaveBeenLastCalledWith({
+      requestId: "same-origin",
+      headers: [
+        { name: "Accept", value: "*/*" },
+        { name: "Authorization", value: "Bearer secret" },
+      ],
+    });
+
+    await paused?.({
+      requestId: "third-party",
+      request: {
+        url: "https://cdn.example.net/font.woff2",
+        headers: { Accept: "font/woff2" },
+      },
+    });
+    expect(continueRequest).toHaveBeenLastCalledWith({
+      requestId: "third-party",
+      headers: [{ name: "Accept", value: "font/woff2" }],
+    });
   });
 });
