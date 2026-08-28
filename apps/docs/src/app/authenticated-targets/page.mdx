@@ -1,16 +1,25 @@
 # Authenticated targets
 
-webreel can attach HTTP request headers to the browser session before the first navigation. This is useful for machine-to-machine authentication, protected staging sites, and other targets where credentials must remain outside the recording configuration.
+webreel can attach HTTP request headers only to requests for one explicit origin. This is useful for machine-to-machine authentication, protected staging sites, and other targets where credentials must remain outside the recording configuration.
 
-Set `WEBREEL_REQUEST_HEADERS_JSON` to a JSON object whose values are strings:
+Set both `WEBREEL_REQUEST_HEADERS_ORIGIN` and `WEBREEL_REQUEST_HEADERS_JSON`:
 
 ```bash
+export WEBREEL_REQUEST_HEADERS_ORIGIN='https://protected.example.com'
 export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
 webreel preview my-demo
 webreel record my-demo
 ```
 
-The same headers are applied to browser requests during both `preview` and `record`.
+The same origin-scoped headers are applied during both `preview` and `record`.
+
+## Why an explicit origin is required
+
+Authentication headers can contain powerful credentials. A recorded page may also load images, analytics, fonts, APIs, or other resources from third-party origins. webreel therefore requires an explicit origin and intercepts only requests matching that origin before adding the configured headers.
+
+This prevents the authentication values from being automatically attached to unrelated third-party subresources.
+
+`WEBREEL_REQUEST_HEADERS_ORIGIN` must contain only an HTTP or HTTPS origin, for example `https://protected.example.com`. Paths, credentials, query strings, and fragments are rejected.
 
 ## Keep secrets out of config files
 
@@ -19,6 +28,7 @@ Do not commit real authorization values to `webreel.config.json`, shell scripts,
 For example, a protected service may require two headers:
 
 ```bash
+export WEBREEL_REQUEST_HEADERS_ORIGIN='https://protected.example.com'
 export WEBREEL_REQUEST_HEADERS_JSON='{"X-Client-Id":"example-id","X-Client-Secret":"example-secret"}'
 webreel record protected-demo
 ```
@@ -27,12 +37,14 @@ Use placeholders in versioned files. Real values should come from ignored local 
 
 ## Validation
 
+Both variables are required together.
+
 `WEBREEL_REQUEST_HEADERS_JSON` must contain a JSON object. Header names must be non-empty and every value must be a string. Invalid values fail before navigation rather than silently recording an authentication page.
 
-When the variable is unset, webreel behaves exactly as before and does not configure extra request headers.
+When both variables are unset, webreel behaves exactly as before and does not configure request interception.
 
 ## Security considerations
 
-Request headers apply to the browser session, including subsequent requests made by the page. Only use credentials whose scope is appropriate for the target being recorded. Prefer least-privilege machine credentials and short or managed lifetimes where the identity provider supports them.
+Only requests for the configured origin receive the injected headers. Use credentials whose scope is appropriate for that target. Prefer least-privilege machine credentials and short or managed lifetimes where the identity provider supports them.
 
 webreel does not print configured header values. Avoid enabling unrelated tooling that dumps process environments when secrets are present.
