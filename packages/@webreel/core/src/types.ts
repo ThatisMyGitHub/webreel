@@ -18,6 +18,10 @@ export type CDPClient = {
       optimizeForSpeed?: boolean;
     }) => Promise<{ data: string }>;
   };
+  Network: {
+    enable: () => Promise<void>;
+    setExtraHTTPHeaders: (params: { headers: Record<string, string> }) => Promise<void>;
+  };
   Input: {
     dispatchMouseEvent: (params: {
       type: string;
