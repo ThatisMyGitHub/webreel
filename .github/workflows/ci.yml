@@ -25,10 +25,7 @@ jobs:
         run: pnpm lint
 
       - name: Format check
-        run: |
-          pnpm exec prettier --write packages/@webreel/core/src/cdp.ts packages/@webreel/core/src/__tests__/cdp.test.ts
-          git diff -- packages/@webreel/core/src/cdp.ts packages/@webreel/core/src/__tests__/cdp.test.ts
-          exit 1
+        run: pnpm format:check
 
       - name: Type check
         run: pnpm type-check
