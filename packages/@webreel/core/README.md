@@ -123,15 +123,20 @@ chrome.kill();
 
 ## Request headers
 
-`connectCDP()` reads the optional `WEBREEL_REQUEST_HEADERS_JSON` environment variable. When present, it enables the Chrome DevTools Network domain and calls `Network.setExtraHTTPHeaders` before returning the client, so the headers are available before the first navigation.
+`connectCDP()` supports optional origin-scoped request-header injection through two environment variables:
 
 ```bash
+export WEBREEL_REQUEST_HEADERS_ORIGIN='https://protected.example.com'
 export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
 ```
 
-The value must be a JSON object with non-empty header names and string values. Invalid values throw an error rather than silently continuing. Header values are not logged by the parser.
+Both variables are required together. `WEBREEL_REQUEST_HEADERS_ORIGIN` must contain only an HTTP or HTTPS origin. `WEBREEL_REQUEST_HEADERS_JSON` must contain an object with non-empty header names and string values.
 
-Keep real authentication values in runtime secret storage and out of versioned source files. When the variable is unset, `connectCDP()` does not enable request-header injection and behaves as before.
+When configured, `connectCDP()` enables Chrome DevTools Fetch interception only for requests matching the explicit origin and merges the configured headers before continuing those requests. This avoids attaching authentication headers to unrelated third-party subresources.
+
+Invalid configuration throws before navigation. Header values are not logged by the parser. Keep real authentication values in runtime secret storage and out of versioned source files.
+
+When both variables are unset, `connectCDP()` behaves as before and does not enable request interception.
 
 ## API
 
