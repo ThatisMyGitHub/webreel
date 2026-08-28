@@ -114,6 +114,18 @@ webreel preview
 webreel preview hero
 ```
 
+### Authenticated targets
+
+Set `WEBREEL_REQUEST_HEADERS_JSON` to attach HTTP headers to every browser request made by `preview` and `record`. The value must be a JSON object whose values are strings.
+
+```bash
+export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
+webreel preview protected-demo
+webreel record protected-demo
+```
+
+Keep real authentication values in runtime secret storage and out of versioned config files. Invalid JSON or non-string header values fail before navigation. When the variable is unset, no extra request headers are configured.
+
 ### `webreel install`
 
 Download Chrome and ffmpeg to `~/.webreel`. Both are also auto-downloaded on first run. Use `--force` to fix corrupted or broken binaries.
