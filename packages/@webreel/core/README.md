@@ -121,6 +121,18 @@ await client.close();
 chrome.kill();
 ```
 
+## Request headers
+
+`connectCDP()` reads the optional `WEBREEL_REQUEST_HEADERS_JSON` environment variable. When present, it enables the Chrome DevTools Network domain and calls `Network.setExtraHTTPHeaders` before returning the client, so the headers are available before the first navigation.
+
+```bash
+export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
+```
+
+The value must be a JSON object with non-empty header names and string values. Invalid values throw an error rather than silently continuing. Header values are not logged by the parser.
+
+Keep real authentication values in runtime secret storage and out of versioned source files. When the variable is unset, `connectCDP()` does not enable request-header injection and behaves as before.
+
 ## API
 
 ### Chrome
