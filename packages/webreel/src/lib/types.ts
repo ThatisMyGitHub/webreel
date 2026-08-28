@@ -172,13 +172,10 @@ export const VIEWPORT_PRESETS: Record<string, { width: number; height: number }>
 export type { SfxConfig } from "@webreel/core";
 import type { SfxConfig } from "@webreel/core";
 
-export type RequestHeaders = Record<string, string>;
-
 export interface VideoConfig {
   name: string;
   url: string;
   baseUrl?: string;
-  headers?: RequestHeaders;
   viewport?: { width: number; height: number };
   zoom?: number;
   fps?: number;
@@ -198,7 +195,6 @@ export interface WebreelConfig {
   $schema?: string;
   outDir?: string;
   baseUrl?: string;
-  headers?: RequestHeaders;
   viewport?: { width: number; height: number };
   theme?: ThemeConfig;
   sfx?: SfxConfig;
