@@ -1,0 +1,164 @@
+name: Package data inspire runtime
+
+on:
+  push:
+    branches:
+      - ops/runtime-v0.1.4-datainspire.1
+
+permissions:
+  contents: write
+
+jobs:
+  package-runtime:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_COMMIT: ffb8a6285037bd0467a22d3e2d0bdae29e106939
+      RUNTIME_VERSION: 0.1.4-datainspire.1
+      RELEASE_TAG: v0.1.4-datainspire.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin exact merged source
+        run: |
+          git checkout --detach "$SOURCE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate source
+        run: |
+          pnpm lint
+          pnpm format:check
+          pnpm type-check
+          pnpm build
+          pnpm test
+
+      - name: Build fork-versioned package copies
+        run: |
+          set -eu
+          rm -rf .runtime-pack dist-runtime runtime-test
+          mkdir -p .runtime-pack/core .runtime-pack/cli dist-runtime
+
+          cp packages/@webreel/core/package.json .runtime-pack/core/package.json
+          cp -a packages/@webreel/core/dist .runtime-pack/core/dist
+          if [ -d packages/@webreel/core/assets ]; then
+            cp -a packages/@webreel/core/assets .runtime-pack/core/assets
+          fi
+
+          cp packages/webreel/package.json .runtime-pack/cli/package.json
+          cp -a packages/webreel/dist .runtime-pack/cli/dist
+
+          node <<'NODE'
+          const fs = require('fs');
+          const version = process.env.RUNTIME_VERSION;
+          const sourceCommit = process.env.SOURCE_COMMIT;
+          const repository = 'https://github.com/ThatisMyGitHub/webreel.git';
+
+          const corePath = '.runtime-pack/core/package.json';
+          const core = JSON.parse(fs.readFileSync(corePath, 'utf8'));
+          core.version = version;
+          core.repository = {
+            type: 'git',
+            url: repository,
+            directory: 'packages/@webreel/core',
+          };
+          core.datainspireBuild = { sourceCommit };
+          fs.writeFileSync(corePath, JSON.stringify(core, null, 2) + '\n');
+
+          const cliPath = '.runtime-pack/cli/package.json';
+          const cli = JSON.parse(fs.readFileSync(cliPath, 'utf8'));
+          cli.version = version;
+          cli.repository = { type: 'git', url: repository };
+          cli.dependencies['@webreel/core'] = version;
+          cli.datainspireBuild = { sourceCommit };
+          fs.writeFileSync(cliPath, JSON.stringify(cli, null, 2) + '\n');
+          NODE
+
+          (cd .runtime-pack/core && npm pack --pack-destination ../../dist-runtime)
+          (cd .runtime-pack/cli && npm pack --pack-destination ../../dist-runtime)
+
+      - name: Test-install packaged runtime
+        run: |
+          set -eu
+          mkdir runtime-test
+          cd runtime-test
+          npm init -y >/dev/null
+          npm install --ignore-scripts \
+            ../dist-runtime/webreel-core-${RUNTIME_VERSION}.tgz \
+            ../dist-runtime/webreel-${RUNTIME_VERSION}.tgz
+          test "$(./node_modules/.bin/webreel --version)" = "$RUNTIME_VERSION"
+          node -e "import('@webreel/core').then(() => process.stdout.write('core-import=PASS\\n'))"
+
+      - name: Generate provenance and hashes
+        run: |
+          set -eu
+          cd dist-runtime
+          sha256sum *.tgz > SHA256SUMS
+          node <<'NODE'
+          const fs = require('fs');
+          const provenance = {
+            engine: 'webreel',
+            fork: 'ThatisMyGitHub/webreel',
+            upstream: 'vercel-labs/webreel',
+            sourceCommit: process.env.SOURCE_COMMIT,
+            runtimeVersion: process.env.RUNTIME_VERSION,
+            releaseTag: process.env.RELEASE_TAG,
+            node: process.version,
+            packageManager: 'pnpm@10.6.2',
+            validation: ['lint', 'format:check', 'type-check', 'build', 'test', 'package-install'],
+          };
+          fs.writeFileSync('PROVENANCE.json', JSON.stringify(provenance, null, 2) + '\n');
+          NODE
+          cat > RELEASE_NOTES.md <<EOF
+          # data inspire Webreel runtime ${RUNTIME_VERSION}
+
+          Fork-built immutable runtime for Demo Studio.
+
+          - Source: ThatisMyGitHub/webreel@${SOURCE_COMMIT}
+          - Upstream baseline: webreel 0.1.4
+          - Fork runtime version: ${RUNTIME_VERSION}
+          - Includes origin-scoped authenticated-target request headers from PR #1
+          - Validated: lint, format, type-check, build, tests, packaged install
+
+          Install both runtime tarballs together. Verify them against SHA256SUMS before use.
+          EOF
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webreel-${{ env.RUNTIME_VERSION }}
+          path: |
+            dist-runtime/*.tgz
+            dist-runtime/SHA256SUMS
+            dist-runtime/PROVENANCE.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish immutable GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite." >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SOURCE_COMMIT" \
+            --title "$RELEASE_TAG" \
+            --notes-file dist-runtime/RELEASE_NOTES.md \
+            dist-runtime/webreel-core-${RUNTIME_VERSION}.tgz \
+            dist-runtime/webreel-${RUNTIME_VERSION}.tgz \
+            dist-runtime/SHA256SUMS \
+            dist-runtime/PROVENANCE.json
