@@ -9,9 +9,9 @@ export interface RequestHeaderConfig {
   headers: Record<string, string>;
 }
 
-export function parseRequestHeaders(raw = process.env[REQUEST_HEADERS_ENV]):
-  | Record<string, string>
-  | undefined {
+export function parseRequestHeaders(
+  raw = process.env[REQUEST_HEADERS_ENV],
+): Record<string, string> | undefined {
   if (!raw) return undefined;
 
   let parsed: unknown;
@@ -52,9 +52,10 @@ export function parseRequestHeaderOrigin(
   try {
     url = new URL(raw);
   } catch (err) {
-    throw new Error(`${REQUEST_HEADERS_ORIGIN_ENV} must contain a valid URL origin`, {
-      cause: err,
-    });
+    throw new Error(
+      `${REQUEST_HEADERS_ORIGIN_ENV} must contain a valid URL origin`,
+      { cause: err },
+    );
   }
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
@@ -129,7 +130,10 @@ export async function configureScopedRequestHeaders(
     const headers =
       requestOrigin === config.origin
         ? mergeRequestHeaders(request.headers, config.headers)
-        : Object.entries(request.headers).map(([name, value]) => ({ name, value }));
+        : Object.entries(request.headers).map(([name, value]) => ({
+            name,
+            value,
+          }));
 
     try {
       await client.Fetch.continueRequest({ requestId, headers });
