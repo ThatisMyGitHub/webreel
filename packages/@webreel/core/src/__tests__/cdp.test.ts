@@ -60,12 +60,12 @@ describe("request headers", () => {
     expect(() => parseRequestHeaderOrigin("file:///tmp/demo")).toThrow(
       `${REQUEST_HEADERS_ORIGIN_ENV} must use http or https`,
     );
-    expect(() => parseRequestHeaderOrigin("https://example.com/private")).toThrow(
-      `${REQUEST_HEADERS_ORIGIN_ENV} must contain only an origin`,
-    );
-    expect(() => parseRequestHeaderOrigin("https://user@example.com")).toThrow(
-      `${REQUEST_HEADERS_ORIGIN_ENV} must contain only an origin`,
-    );
+    expect(() =>
+      parseRequestHeaderOrigin("https://example.com/private"),
+    ).toThrow(`${REQUEST_HEADERS_ORIGIN_ENV} must contain only an origin`);
+    expect(() =>
+      parseRequestHeaderOrigin("https://user@example.com"),
+    ).toThrow(`${REQUEST_HEADERS_ORIGIN_ENV} must contain only an origin`);
   });
 
   it("rejects invalid JSON", () => {
