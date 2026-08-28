@@ -130,15 +130,16 @@ webreel preview hero --verbose
 
 ### Authenticated targets
 
-Set `WEBREEL_REQUEST_HEADERS_JSON` to attach HTTP headers to every browser request during `preview` and `record`. The value must be a JSON object whose values are strings.
+Set both `WEBREEL_REQUEST_HEADERS_ORIGIN` and `WEBREEL_REQUEST_HEADERS_JSON` to attach HTTP headers only to requests for one explicit origin during `preview` and `record`. The header JSON values must be strings.
 
 ```bash
+export WEBREEL_REQUEST_HEADERS_ORIGIN='https://protected.example.com'
 export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
 webreel preview protected-demo
 webreel record protected-demo
 ```
 
-Keep real authentication values in runtime secret storage. Do not commit credentials to webreel configuration files, scripts, examples, or documentation. When the variable is unset, webreel does not configure extra request headers.
+The explicit origin prevents authentication headers from being attached to third-party subresources. Both variables are required together. Keep real authentication values in runtime secret storage and never commit them to webreel configuration files, scripts, examples, or documentation.
 
 See the [Authenticated Targets](https://webreel.dev/authenticated-targets) guide for security and validation details.
 
