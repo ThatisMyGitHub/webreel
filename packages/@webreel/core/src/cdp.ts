@@ -33,9 +33,7 @@ export function parseRequestHeaders(
       throw new Error(`${REQUEST_HEADERS_ENV} contains an empty header name`);
     }
     if (typeof value !== "string") {
-      throw new Error(
-        `${REQUEST_HEADERS_ENV} header "${name}" must have a string value`,
-      );
+      throw new Error(`${REQUEST_HEADERS_ENV} header "${name}" must have a string value`);
     }
     headers[name] = value;
   }
@@ -52,23 +50,16 @@ export function parseRequestHeaderOrigin(
   try {
     url = new URL(raw);
   } catch (err) {
-    throw new Error(
-      `${REQUEST_HEADERS_ORIGIN_ENV} must contain a valid URL origin`,
-      { cause: err },
-    );
+    throw new Error(`${REQUEST_HEADERS_ORIGIN_ENV} must contain a valid URL origin`, {
+      cause: err,
+    });
   }
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(`${REQUEST_HEADERS_ORIGIN_ENV} must use http or https`);
   }
 
-  if (
-    url.username ||
-    url.password ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash
-  ) {
+  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
     throw new Error(
       `${REQUEST_HEADERS_ORIGIN_ENV} must contain only an origin, without credentials, path, query, or fragment`,
     );
@@ -100,9 +91,7 @@ export function mergeRequestHeaders(
   existing: CDPHeaderMap,
   injected: Record<string, string>,
 ): Array<{ name: string; value: string }> {
-  const injectedNames = new Set(
-    Object.keys(injected).map((name) => name.toLowerCase()),
-  );
+  const injectedNames = new Set(Object.keys(injected).map((name) => name.toLowerCase()));
 
   const headers = Object.entries(existing)
     .filter(([name]) => !injectedNames.has(name.toLowerCase()))
