@@ -128,6 +128,20 @@ webreel preview hero
 webreel preview hero --verbose
 ```
 
+### Authenticated targets
+
+Set `WEBREEL_REQUEST_HEADERS_JSON` to attach HTTP headers to every browser request during `preview` and `record`. The value must be a JSON object whose values are strings.
+
+```bash
+export WEBREEL_REQUEST_HEADERS_JSON='{"Authorization":"Bearer example-token"}'
+webreel preview protected-demo
+webreel record protected-demo
+```
+
+Keep real authentication values in runtime secret storage. Do not commit credentials to webreel configuration files, scripts, examples, or documentation. When the variable is unset, webreel does not configure extra request headers.
+
+See the [Authenticated Targets](https://webreel.dev/authenticated-targets) guide for security and validation details.
+
 ### Composite
 
 Re-composite videos from stored raw recordings and timelines without re-recording:
