@@ -8,12 +8,12 @@ const FRAME_MS = 1000 / FPS;
 describe("recording wall-clock timing", () => {
   it("preserves slow screenshot intervals instead of capping catch-up frames", () => {
     const elapsedMs = 200;
-    const slots = frameSlotsForElapsed(elapsedMs, FRAME_MS);
+    const targetFrames = frameSlotsForElapsed(elapsedMs, FRAME_MS);
 
-    expect(slots).toBe(12);
+    expect(targetFrames).toBe(12);
 
     const timeline = new InteractionTimeline(1440, 900, { fps: FPS });
-    for (let i = 0; i < slots; i++) timeline.tick();
+    for (let i = 0; i < targetFrames; i++) timeline.tick();
 
     const encodedDurationMs = (timeline.getFrameCount() / FPS) * 1000;
     expect(encodedDurationMs).toBeCloseTo(elapsedMs, 0);
@@ -21,6 +21,28 @@ describe("recording wall-clock timing", () => {
 
   it("preserves a one-second stall as one second of held output", () => {
     expect(frameSlotsForElapsed(1000, FRAME_MS)).toBe(60);
+  });
+
+  it("targets the scripted stop time rather than the last completed desktop screenshot", () => {
+    // Empirical HCF regression: runtime .3 had encoded 174 frames (2.9s)
+    // when the unchanged desktop scenario reached a >=6.4s scripted stop.
+    const alreadyEncodedFrames = 174;
+    const stopTargetFrames = frameSlotsForElapsed(6400, FRAME_MS);
+
+    expect(stopTargetFrames).toBe(384);
+    expect(stopTargetFrames - alreadyEncodedFrames).toBe(210);
+  });
+
+  it("uses one recording-start anchor across successive capture observations", () => {
+    const firstObservation = frameSlotsForElapsed(2900, FRAME_MS);
+    const laterObservation = frameSlotsForElapsed(5000, FRAME_MS);
+    const stopTarget = frameSlotsForElapsed(6400, FRAME_MS);
+
+    expect(firstObservation).toBe(174);
+    expect(laterObservation).toBe(300);
+    expect(stopTarget).toBe(384);
+    expect(firstObservation).toBeLessThan(laterObservation);
+    expect(laterObservation).toBeLessThan(stopTarget);
   });
 
   it("always emits at least one frame for a valid capture", () => {
