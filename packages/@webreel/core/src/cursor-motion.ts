@@ -56,11 +56,11 @@ function evalBezier(t: number, p0: Point, p1: Point, p2: Point): Point {
 
 /**
  * Animate cursor from one position to another. Pre-computes the full
- * bezier path with easing and jitter, then registers a frame-based
- * tick function (window.__tickCursor) that the recorder calls before
- * every captureScreenshot. Each tick advances exactly one step through
- * the path, so every captured frame shows a smooth intermediate
- * position regardless of actual capture latency.
+ * bezier path with easing and jitter, then registers a frame-based path
+ * that the recorder advances once per encoded output frame. In recording
+ * mode the browser interaction waits for the timeline path itself to be
+ * consumed, so slow screenshot capture cannot let the click outrun the
+ * composited cursor.
  */
 export async function animateMoveTo(
   ctx: RecordingContext,
@@ -97,9 +97,7 @@ export async function animateMoveTo(
   positions[positions.length - 1] = { x: toX, y: toY };
 
   if (ctx.isRecording && ctx.timeline) {
-    ctx.timeline.setCursorPath(positions);
-
-    await new Promise((r) => setTimeout(r, NUM_STEPS * CAPTURE_CYCLE_MS));
+    await ctx.timeline.setCursorPath(positions);
 
     await client.Input.dispatchMouseEvent({
       type: "mouseMoved",
