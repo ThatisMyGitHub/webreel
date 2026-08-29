@@ -9,6 +9,22 @@ import { ensureFfmpeg } from "./ffmpeg.js";
 import { finalizeMp4, finalizeWebm, finalizeGif, type SfxConfig } from "./media.js";
 import type { InteractionTimeline, TimelineData } from "./timeline.js";
 
+/**
+ * Convert real elapsed capture time into the number of constant-rate output
+ * frames required to preserve that duration. Deliberately do not cap the
+ * result: a slow screenshot or long stall must become a held frame in the
+ * output rather than silently accelerating the recording.
+ */
+export function frameSlotsForElapsed(elapsedMs: number, frameMs: number): number {
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+    throw new Error(`Invalid elapsed capture time: ${elapsedMs}`);
+  }
+  if (!Number.isFinite(frameMs) || frameMs <= 0) {
+    throw new Error(`Invalid frame duration: ${frameMs}`);
+  }
+  return Math.max(1, Math.round(elapsedMs / frameMs));
+}
+
 export class Recorder {
   private outputPath = "";
   private frameCount = 0;
@@ -152,6 +168,17 @@ export class Recorder {
     }
   }
 
+  private async emitFrame(buffer: Buffer): Promise<void> {
+    if (this.timeline) this.timeline.tick();
+    await this.writeFrame(buffer);
+    this.frameCount++;
+
+    if (this.framesDir) {
+      const padded = String(this.frameCount).padStart(5, "0");
+      writeFileSync(resolve(this.framesDir, `frame-${padded}.jpg`), buffer);
+    }
+  }
+
   private async raceStop<T>(promise: Promise<T>): Promise<T | null> {
     const stopped = this.stoppedPromise!.then((): null => null);
     const result = await Promise.race([promise, stopped]);
@@ -164,9 +191,7 @@ export class Recorder {
 
     while (this.running) {
       try {
-        if (this.timeline) {
-          this.timeline.tick();
-        } else {
+        if (!this.timeline) {
           const evalResult = await this.raceStop(
             client.Runtime.evaluate({
               expression: "window.__tickCursor&&window.__tickCursor()",
@@ -174,6 +199,7 @@ export class Recorder {
           );
           if (!evalResult) break;
         }
+
         const screenshotResult = await this.raceStop(
           client.Page.captureScreenshot({
             format: "jpeg",
@@ -186,22 +212,14 @@ export class Recorder {
         const buffer = Buffer.from(screenshotResult.data, "base64");
         const now = Date.now();
         const elapsed = now - lastFrameTime;
-        const frameSlots = Math.min(3, Math.max(1, Math.round(elapsed / this.frameMs)));
+        const frameSlots = frameSlotsForElapsed(elapsed, this.frameMs);
 
-        if (frameSlots > 1) {
-          for (let i = 0; i < frameSlots - 1; i++) {
-            if (this.timeline) this.timeline.tickDuplicate();
-            await this.writeFrame(buffer);
-            this.frameCount++;
-          }
-        }
-
-        await this.writeFrame(buffer);
-        this.frameCount++;
-
-        if (this.framesDir) {
-          const padded = String(this.frameCount).padStart(5, "0");
-          writeFileSync(resolve(this.framesDir, `frame-${padded}.jpg`), buffer);
+        // Every output frame advances the separate interaction timeline. When
+        // screenshot capture is slower than the target fps, repeated copies of
+        // the latest browser frame preserve real elapsed time while cursor/HUD
+        // overlays continue to progress at the configured output frame rate.
+        for (let i = 0; i < frameSlots; i++) {
+          await this.emitFrame(buffer);
         }
 
         lastFrameTime = now;
