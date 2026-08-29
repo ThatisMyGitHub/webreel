@@ -49,6 +49,7 @@ export interface TimelineData {
 export class InteractionTimeline {
   private cursorPath: Point[] | null = null;
   private pathIndex = 0;
+  private cursorPathResolve: (() => void) | null = null;
   private currentCursor: CursorState = {
     x: -OFFSCREEN_MARGIN,
     y: -OFFSCREEN_MARGIN,
@@ -115,9 +116,24 @@ export class InteractionTimeline {
     }
   }
 
-  setCursorPath(positions: Point[]): void {
+  setCursorPath(positions: Point[]): Promise<void> {
+    if (this.cursorPathResolve) {
+      this.cursorPathResolve();
+      this.cursorPathResolve = null;
+    }
+
+    if (positions.length === 0) {
+      this.cursorPath = null;
+      this.pathIndex = 0;
+      return Promise.resolve();
+    }
+
     this.cursorPath = positions;
     this.pathIndex = 0;
+
+    return new Promise<void>((resolve) => {
+      this.cursorPathResolve = resolve;
+    });
   }
 
   setCursorScale(scale: number): void {
@@ -144,16 +160,25 @@ export class InteractionTimeline {
   }
 
   tick(): void {
+    let completedCursorPath = false;
+
     if (this.cursorPath && this.pathIndex < this.cursorPath.length) {
       const p = this.cursorPath[this.pathIndex++];
       this.currentCursor.x = p.x;
       this.currentCursor.y = p.y;
       if (this.pathIndex >= this.cursorPath.length) {
         this.cursorPath = null;
+        completedCursorPath = true;
       }
     }
 
     this.pushCurrentState();
+
+    if (completedCursorPath && this.cursorPathResolve) {
+      const resolve = this.cursorPathResolve;
+      this.cursorPathResolve = null;
+      resolve();
+    }
 
     const resolvers = this.tickResolvers;
     this.tickResolvers = [];
