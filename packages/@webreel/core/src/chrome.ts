@@ -196,6 +196,24 @@ export interface LaunchChromeOptions {
   headless?: boolean;
 }
 
+/**
+ * Flags used by Webreel's Page.captureScreenshot-based recorder.
+ *
+ * Do not enable --enable-begin-frame-control here. When that Chromium mode is
+ * enabled, frame production/screenshot capture is driven through
+ * HeadlessExperimental.beginFrame. Webreel currently records with
+ * Page.captureScreenshot, so BeginFrameControl can leave screenshot requests
+ * waiting indefinitely and produce a zero-frame recording.
+ */
+export const HEADLESS_RECORDING_FLAGS = [
+  "--no-sandbox",
+  "--hide-scrollbars",
+  "--run-all-compositor-stages-before-draw",
+  "--disable-threaded-animation",
+  "--disable-threaded-scrolling",
+  "--disable-checker-imaging",
+] as const;
+
 export async function launchChrome(
   options?: LaunchChromeOptions,
 ): Promise<ChromeInstance> {
@@ -212,13 +230,7 @@ export async function launchChrome(
       ? [
           `--remote-debugging-port=${port}`,
           `--user-data-dir=${userDataDir}`,
-          "--no-sandbox",
-          "--hide-scrollbars",
-          "--enable-begin-frame-control",
-          "--run-all-compositor-stages-before-draw",
-          "--disable-threaded-animation",
-          "--disable-threaded-scrolling",
-          "--disable-checker-imaging",
+          ...HEADLESS_RECORDING_FLAGS,
           "about:blank",
         ]
       : [
